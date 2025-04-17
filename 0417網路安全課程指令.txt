@@ -1,0 +1,118 @@
+開aws、docker hub
+~aws~
+創建ec2
+
+~vscode~
+1.下載 remote development
+2.左下(> <) -> connect to host -> configure ssh hosts -> 選第一個
+
+~config~
+Host ubuntu
+   HostName 54.153.157.63
+   User ubuntu
+   IdentityFile C:\Windows\System32\0417.pem
+
+
+
+~terminal~
+
+
+sudo apt update
+sudo apt install -y apt-transport-https ca-certificates curl 
+sudo apt install -y docker.io
+sudo systemctl enable --now docker
+sudo usermod -aG docker $USER
+newgrp docker 
+
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+kubectl version --client --output=yaml
+
+
+curl -LO https://github.com/kubernetes/minikube/releases/latest/download/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube && rm minikube-linux-amd64
+minikube version
+minikube start --driver=docker
+
+
+kubectl cluster-info
+kubectl config view
+kubectl get nodes
+kubectl get pods
+minikube dashboard
+
+docker login -u "username" -p "password" docker.io
+docker build .
+docker tag imageID account/tag
+docker push account/tag
+
+
+mkdir k8s
+cd k8s/
+新增mypod.yaml檔案
+
+
+~mypod.yaml~
+apiVersion: v1
+kind: Pod
+metadata:
+   name: my-pod
+   labels:
+	app:webserver
+spec:
+   containers:
+   - name:pod-demo
+	image:(docker hub 自己專案名稱)
+	ports:
+	- containerPort:3000
+
+
+~terminal~
+cd k8s
+kubectl apply -f mypod.yaml
+kubectl get nodes
+kubectl describe pods my-pod #檢視
+
+#內網看網頁
+(
+~terminal~
+kubectl port-forward my-pod 8000:3000 #host:container
+
+~ec2~
+安全群組-> 編輯 -> 新增規則-> port 8000 來源隨機ipv4
+
+~vscode~
+port -> add port 8000 -> 點網路圖示
+
+)
+
+
+#外網看網頁
+(
+1.kubectl expose pod/my-pod --type NodePort
+ 
+2.kubectl get service#查看port為多少
+  -> 3000:31612
+3.kubectl describe pod my-pod#查看node為多少
+  -> 192.168.49.2
+
+4.ip a #查看本機網卡名稱
+  -> eth0
+
+5.sudo iptables -A PREROUTING -t nat -i eth0 -p tcp --dport 31612 -j DNAT --to 192.168.49.2:31612
+
+6.sudo iptables -A FORWARD  -p tcp -d 192.168.49.2 --dport 31612 -j ACCEPT
+
+7.~ec2~
+  安全群組-> 編輯 -> 新增規則-> port 31612 來源隨機ipv4
+
+8.~網頁~
+  網址:(ec2ipv4公有):31612
+)
+
+
+
+
+
+
+
